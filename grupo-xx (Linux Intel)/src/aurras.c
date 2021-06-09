@@ -2,6 +2,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include<string.h>
 
 int main(int argc, char const *argv[]) 
 {
@@ -36,8 +39,32 @@ int main(int argc, char const *argv[])
     close(server_client_fifo);
     close(client_server_fifo);
     */
+    
+    
+    
+    int pid = getpid();
+
+    char pidR[10];
+    char pidW[10];
+    sprintf(pidR,"%dR",pid);
+    sprintf(pidW,"%dW",pid);
+    
+
+    
+    mkfifo(pidR,0644);
+    mkfifo(pidW,0644);
 
     client_server_fifo = open("client_server_fifo",O_WRONLY);
+    write(client_server_fifo, &pid, sizeof(pid));
+     
+    
+    int fifo_W = open(pidW, O_WRONLY);
+    char message[] = "status";
+    write(fifo_W, message, sizeof(message));
+    
+    //int fifo_r = open(pidR, O_RDONLY);
+
+
     
     
 
