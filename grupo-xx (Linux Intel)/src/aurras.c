@@ -5,13 +5,15 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include<string.h>
+#define BUFFSIZE 1024
 
 int main(int argc, char const *argv[]) 
 {
-    char buffer[1024];
+
     int bytesRead;
-    int client_server_fifo;
-    int server_client_fifo;
+    char pidR[10];
+    char pidW[10];
+    char buffer[BUFFSIZE];
     
     
 
@@ -43,26 +45,40 @@ int main(int argc, char const *argv[])
     
     
     int pid = getpid();
-
-    char pidR[10];
-    char pidW[10];
     sprintf(pidR,"%dR",pid);
     sprintf(pidW,"%dW",pid);
+
     
 
     
     mkfifo(pidR,0644);
     mkfifo(pidW,0644);
 
-    client_server_fifo = open("client_server_fifo",O_WRONLY);
-    write(client_server_fifo, &pid, sizeof(pid));
+    
+
+    int principal = open("principal", O_WRONLY);
+    
+    
+    
+    write(principal, &pid, sizeof(pid));
+    close(principal);
      
     
     int fifo_W = open(pidW, O_WRONLY);
+    int fifo_R = open(pidR, O_RDONLY);
+    dup2(fifo_R,0);
+    
+
+    while(bytesRead = (read(1, buffer, BUFFSIZE))>0){
+        write(fifo_W, buffer, bytesRead);
+    }
+    
+    
+
     char message[] = "status";
     write(fifo_W, message, sizeof(message));
     
-    //int fifo_r = open(pidR, O_RDONLY);
+   
 
 
     

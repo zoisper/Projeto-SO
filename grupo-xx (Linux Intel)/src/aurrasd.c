@@ -93,6 +93,22 @@ filter configServer(char const *path){
    return r;
 }
 
+int[] sendStatus(filter f){
+    int r[]
+    while(f){
+
+    }
+}
+
+int numFilters(filter f){
+    int r = 0;
+    while(f){
+        r++;
+        f = f->prox;
+    }
+    return r;
+}
+
 
 
 
@@ -103,53 +119,62 @@ int main(int argc, char const *argv[])
 {
 
    
+
     if(argc < 2)
         return 0;
+    //printf("Ola\n");
+
 
     filter configs = configServer(argv[1]);
+    int fn = numFilters(configs);
     char buffer[BUFFSIZE];
     int pid;
-    
-    mkfifo("client_server_fifo", 0644);
-    mkfifo("server_client_fifo", 0644);
+    int bytesRead;
+    int fildes[2];
+
+    pipe(fildes);
+
+
+    mkfifo("principal", 0644);
 
 
     
-    int client_server_fifo = open("client_server_fifo", O_RDWR);
-    //int server_client_fifo = open("server_client_fifo", O_WRONLY);
-
-    while(read(client_server_fifo, &pid, sizeof(pid)) > 0){
+    int principal = open("principal", O_RDWR);
+    
+    
+    printf("Ola\n");
+    
+    while(read(principal, &pid, sizeof(pid)) > 0){
+        
         if(fork() == 0 ){
+            //close(fildes[1]);
+            dup2(fildes[0],0);
+            int ocupation;
+            read(0, buffer, BUFFSIZE);
+            printf("%s",buffer );
             char pidR[10];
             char pidW[10];
             sprintf(pidR,"%dR",pid);
             sprintf(pidW,"%dW",pid);
-            int fifo_w = open(pidW, O_RDONLY);
+            int fifo_R = open(pidR, O_RDONLY);
+            int fifo_w = open(pidW, O_WRONLY);
+            //dup2(fifo_w,1);
             //int fifo_w = open(pidW, O_WRONLY);
             
-            while(read(fifo_w, &buffer, BUFFSIZE)>0 && strcmp(buffer, "end")!=0)
+            while(bytesRead = (read(fifo_w, &buffer, BUFFSIZE))>0 && strcmp(buffer, "end")!=0)
                 if(strcmp(buffer, "status")==0)
                     showFilters(configs);
             _exit(0);
         }
-        else
-            wait(NULL);
-        //printf("%s\n", buffer);
+        
+        else{
+            dup2(fildes[1],1);
+            //showFilters(configs);
+        }
         
     }
     
-
-
-    //read(client_server_fifo, buffer, 1024);
-    //close(server_client_fifo);
-
-    close(client_server_fifo);
-    close(client_server_fifo);
-    //unlink("client_server_fifo");
-    //unlink("server_client_fifo");
     
-
-
 
 
     return 0;
