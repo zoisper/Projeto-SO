@@ -20,6 +20,11 @@ void showError(){
 
 }
 
+void cleanBufer(){
+    char c[1] = "";
+    read(1, c, 1);
+}
+
 
 int main(int argc, char const *argv[]) 
 {
@@ -56,11 +61,6 @@ int main(int argc, char const *argv[])
 
     int fifo_W = open(pidW, O_WRONLY);
     int fifo_R = open(pidR, O_RDONLY);
-
-    //bin/aurrasd-filters/aurrasd-echo < samples/samples-1.m4a > output.mp3
-    //execlp(".././teste", ".././teste", "ola", NULL);
-
-    execlp("../bin/aurrasd-filters/./aurrasd-echo", "../bin/aurrasd-filters/./aurrasd-echo", "<", "samples/sample-1-so.m4a", ">", "output.mp3n", NULL);
     
     if(argc>1){
         if(strcmp(argv[1], "status") == 0 )
@@ -72,16 +72,16 @@ int main(int argc, char const *argv[])
         else
             showError();
     }
-    
 
     while((bytesRead = read(0, buffer, BUFFSIZE))>0){
-        if(strcmp(buffer, "status\n") == 0 || strcmp(buffer, "status") ==0)
+        buffer[bytesRead-1] = '\0';
+        if(strcmp(buffer, "status") == 0)
             showStatus(fifo_R, fifo_W);
-        else
+        else{
             showError();
+            fflush(stdin);
+        }
 
-
-        fflush(stdin);
             
     }
     

@@ -7,7 +7,9 @@
 #include<string.h>
 #define BUFFSIZE 1024
 
-int FN;
+int numFilters = 0;
+char tasksPath[100] = "tasks.txt";
+char statusPath[100] = "status.txt";
 
 ssize_t readln(int fd, char *line)
 {
@@ -68,9 +70,9 @@ filter makeFilter(char s1[]){
 }
 
 
-filter addFilter(filter f, char s1[]){
+filter addFilter(filter f, char s[]){
 
-    filter r = makeFilter(s1);
+    filter r = makeFilter(s);
     r->prox = f;
     return r;
 }
@@ -99,7 +101,7 @@ void decreaseFilter(filter f, char type[]){
     f->ocupation--;
 }
 
-int isAvailable( filter f, char type[]){
+int isAvailable(filter f, char type[]){
     while(f && strcmp(f->type, type)!=0)
         f = f->prox;
     return f->ocupation < f->max;
@@ -107,141 +109,147 @@ int isAvailable( filter f, char type[]){
 
 
 
-
-void writeFilters(int file, filter f ){
-    char buffer[BUFFSIZE];
-    char result[1024] = "";
-    int bytes = 0;
-    while(f){
-        bytes += sprintf(buffer,"filter %s: %d/%d (running/max)\n", f->type, f->ocupation, f->max);
-        strcat(result, buffer);
-        f = f->prox;
-    }
-        bytes += sprintf(buffer,"pid: %d\n", getppid());
-        strcat(result, buffer);
-        write(file, result, bytes);
-}
-
-
-
-
 filter configServer(char const *path){
     char buffer[BUFFSIZE];
     filter r = NULL;
     int config_file = open(path, O_RDONLY);
-    while(readln(config_file, buffer))
+    numFilters = 0;
+    while(readln(config_file, buffer)){
        r = addFilter(r, buffer);
+       numFilters++;
+    }
    return r;
 }
 
 
-int numFilters(filter f){
-    int r = 0;
-    while(f){
-        r++;
-        f = f->prox;
-    }
-    return r;
+
+void createFiltersStatusFile(){
+    int fd = open(statusPath,O_RDWR | O_TRUNC |O_CREAT, 0600);
+    close(fd);
 }
 
-int createStatusFile(){
-    return open("status.txt",O_RDWR | O_CREAT, 0600);
+void createTasksFile(){
+    int fd = open(tasksPath, O_RDWR | O_TRUNC | O_CREAT, 0777);
+    close(fd);
+
 }
 
-int createTasksFile(){
-    return open("tasks.txt", O_RDWR | O_TRUNC | O_CREAT, 0777);;
-}
-
-void saveStatus(int file, filter f){
-    int ocupation[FN];
-    for(int i = 0; i< FN && f; i++){
+void saveStatus(filter f){
+    int fd = open(statusPath, O_RDWR);
+    int ocupation[numFilters];
+    for(int i = 0; i< numFilters && f; i++){
         ocupation[i] = f->ocupation;
         f = f->prox;
     }
-    lseek(file, 0, SEEK_SET);
-    write(file, ocupation, sizeof(int)*FN);
+    lseek(fd, 0, SEEK_SET);
+    write(fd, ocupation, sizeof(int)*numFilters);
+    close(fd);
 }
 
-void loadStatus(int file, filter f){
-    int ocupation[FN];
-    lseek(file, 0, SEEK_SET);
-    read(file, ocupation, sizeof(int)*FN);
-    for(int i = 0; i<FN && f; i++){
+void loadStatus(filter f){
+    int fd = open(statusPath, O_RDWR);
+    int ocupation[numFilters];
+    lseek(fd, 0, SEEK_SET);
+    read(fd, ocupation, sizeof(int)*numFilters);
+    for(int i = 0; i<numFilters && f; i++){
         f->ocupation = ocupation[i];
         f = f->prox;
     }
+    close(fd);
 }
 
-int addTask(int file, char process[]){
+int addTask(char process[]){
+    int tasks = open(tasksPath,O_RDWR);
     task new, aux;
     strcpy(new.process, process);
     new.status = 0;
-    lseek(file, - sizeof(struct Task), SEEK_END);
-    if (read(file, &aux, sizeof(struct Task))>0)
+    lseek(tasks, - sizeof(struct Task), SEEK_END);
+    if (read(tasks, &aux, sizeof(struct Task))>0)
         new.num = aux.num + 1;
     else
         new.num = 1;
-    lseek(file, 0, SEEK_END);
-    write(file, &new, sizeof(struct Task));
+    lseek(tasks, 0, SEEK_END);
+    write(tasks, &new, sizeof(struct Task));
+    close(tasks);
     return new.num;
 }
 
-void doneTask(int file, int taskNumber){
+void doneTask(int taskNumber){
+    int tasks = open(tasksPath,O_RDWR);
     task aux;
-    lseek(file, 0, SEEK_SET);
-    while(read(file, &aux, sizeof(struct Task))>0 && aux.num!=taskNumber);
-    lseek(file, -sizeof(struct Task), SEEK_CUR);
+    lseek(tasks, 0, SEEK_SET);
+    while(read(tasks, &aux, sizeof(struct Task))>0 && aux.num!=taskNumber);
+    lseek(tasks, -sizeof(struct Task), SEEK_CUR);
     aux.status = 1;
-    write(file, &aux, sizeof(struct Task) );
+    write(tasks, &aux, sizeof(struct Task) );
+    close(tasks);
 
 }
 
-void writeTasks(int file){
-    task aux;
-    int tasks = open("tasks.txt", O_RDONLY);
-    lseek(tasks, 0, SEEK_SET);
+
+void writeStatus(int file, filter f){
     char buffer[BUFFSIZE];
     char result[BUFFSIZE] = "";
     int bytesRead = 0;
+    task aux;
+    int tasks = open(tasksPath, O_RDONLY);
+    lseek(tasks, 0, SEEK_SET);
     while(read(tasks, &aux, sizeof(struct Task))>0){
         if(aux.status == 0){
             bytesRead += sprintf(buffer,"Task %d %s\n", aux.num, aux.process);
             strcat(result, buffer);
         }
     }
+    close(tasks);
+
+    while(f){
+        bytesRead += sprintf(buffer,"filter %s: %d/%d (running/max)\n", f->type, f->ocupation, f->max);
+        strcat(result, buffer);
+        f = f->prox;
+    }
+        bytesRead += sprintf(buffer,"pid: %d\n", getppid());
+        strcat(result, buffer);
+
+    
 
     write(file, result, bytesRead);
-
 }
-
-
 
 
 
 
 int main(int argc, char const *argv[]) 
 {
-
-    int tasks = createTasksFile();
-    
-    if(argc < 2)
-        return 0;
-
-
-    filter configs = configServer(argv[1]);
-    FN = numFilters(configs);
     char buffer[BUFFSIZE];
     int pid;
     int bytesRead;
     char pidR[10];
     char pidW[10];
     int fildes[2];
-
-    int status = createStatusFile();
-    int tasks = createTasksFile();
-    saveStatus(status, configs);
-
     
+
+    createTasksFile();
+    createFiltersStatusFile();
+    filter configs = configServer(argv[1]);
+    addTask("Ola");
+    addTask("Mundo");
+    doneTask(1);
+    
+
+    /*if(fork() == 0){
+        increaseFilter(configs, "alto");
+        saveStatus(configs);
+        _exit(0);
+    }
+    else{
+        wait(NULL);
+        loadStatus(configs);
+        writeStatus(1, configs);
+    }*/
+
+
+    if(argc < 2)
+        return 0;
 
 
 
@@ -261,8 +269,8 @@ int main(int argc, char const *argv[])
 
             
             while((bytesRead = read(fifo_R, &buffer, BUFFSIZE))>0){
-                if(strcmp(buffer, "status\n") == 0 || strcmp(buffer, "status") ==0)
-                    writeFilters(fifo_W, configs);
+                if(strcmp(buffer, "status")==0)
+                    writeStatus(fifo_W, configs);
                 fflush(stdin);
 
             }
@@ -270,6 +278,7 @@ int main(int argc, char const *argv[])
         
     }
 
+    
 
     return 0;
 }
