@@ -256,7 +256,7 @@ int main(int argc, char const *argv[])
     mkfifo("principal", 0644);
     int principal = open("principal", O_RDWR);
     
-    
+    char message[20] = "end";    
     
     
     while(read(principal, &pid, sizeof(pid)) > 0){
@@ -267,11 +267,12 @@ int main(int argc, char const *argv[])
             int fifo_R = open(pidW, O_RDONLY);
             int fifo_W = open(pidR, O_WRONLY);
 
-            
             while((bytesRead = read(fifo_R, &buffer, BUFFSIZE))>0){
+                buffer[bytesRead] = '\0';
                 if(strcmp(buffer, "status")==0)
                     writeStatus(fifo_W, configs);
-                fflush(stdin);
+                else
+                    write(fifo_W, message, strlen(message));
 
             }
         }

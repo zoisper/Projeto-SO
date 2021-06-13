@@ -20,11 +20,6 @@ void showError(){
 
 }
 
-void cleanBufer(){
-    char c[1] = "";
-    read(1, c, 1);
-}
-
 
 int main(int argc, char const *argv[]) 
 {
@@ -33,7 +28,7 @@ int main(int argc, char const *argv[])
     char pidR[10];
     char pidW[10];
     char buffer[BUFFSIZE];
-    
+    char buffer2[BUFFSIZE];
     
     
     
@@ -73,17 +68,32 @@ int main(int argc, char const *argv[])
             showError();
     }
 
+    char message[20] = "end\n";
+
+
     while((bytesRead = read(0, buffer, BUFFSIZE))>0){
         buffer[bytesRead-1] = '\0';
-        if(strcmp(buffer, "status") == 0)
+        if(strcmp(buffer, "status") == 0 )
             showStatus(fifo_R, fifo_W);
         else{
-            showError();
-            fflush(stdin);
+                int controlo = 1;
+                write(fifo_W, buffer, bytesRead);
+                while(controlo){
+                    bytesRead = read(fifo_R, buffer, BUFFSIZE);
+                    buffer[bytesRead] = '\0';
+                    if(strcmp(buffer, "end") ==0)
+                        controlo = 0;
+                    else
+                        write(1, buffer, bytesRead);
+                
+                }
+
+            }
+            
         }
 
+
             
-    }
     
     
 
