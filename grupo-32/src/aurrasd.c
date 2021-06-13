@@ -10,6 +10,8 @@
 int numFilters = 0;
 char tasksPath[100] = "../tmp/tasks.txt";
 char statusPath[100] = "../tmp/status.txt";
+int principal;
+char fifo[] = "../tmp/fifo";
 
 ssize_t readln(int fd, char *line)
 {
@@ -153,6 +155,8 @@ void createFiltersStatusFile(){
 
 void createTasksFile(){
     int fd = open(tasksPath, O_RDWR | O_TRUNC, 0777);
+    if(fd <1)
+        fd = open(tasksPath, O_RDWR | O_CREAT, 0777); 
     close(fd);
 
 }
@@ -305,6 +309,12 @@ int checkInput(filter configs, char *comandos[BUFFSIZE], int numComandos){
     return controlo;
 }
 
+void handler(int signum){
+    
+    close(principal);
+
+}
+
 
 
 
@@ -320,7 +330,7 @@ int main(int argc, char const *argv[])
     char pending[] = "pending\n";
     char processing[] = "processing\n";
     char numFiltersExceeded[] = "exceeded number of filters allowed\n";
-    char fifo[20] = "../tmp/fifo";
+    
     
     if(argc < 2)
         return 0;
@@ -338,10 +348,11 @@ int main(int argc, char const *argv[])
 
 
     mkfifo(fifo, 0644);
-    int principal = open(fifo, O_RDWR);
+    principal = open(fifo, O_RDWR);
 
        
-    
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
     
     while(read(principal, &pid, sizeof(pid)) > 0){
         
@@ -392,12 +403,12 @@ int main(int argc, char const *argv[])
                 
                 close(fifo_W);
                 close(fifo_R);
-                unlink(pidR);
-                unlink(pidW);
             
         }
         
     }
+
+    unlink(fifo);
 
     
 
