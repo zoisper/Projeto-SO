@@ -51,7 +51,7 @@ int main(int argc, char const *argv[])
     char pidR[20];
     char pidW[20];
     char buffer[BUFFSIZE];
-    char done[] = "done\n";
+    char fifo[20] = "../tmp/fifo";
     
     
     int pid = getpid();
@@ -66,7 +66,7 @@ int main(int argc, char const *argv[])
 
     
 
-    int principal = open("principal", O_WRONLY);
+    int principal = open(fifo, O_WRONLY);
     
     
     
@@ -114,7 +114,6 @@ int main(int argc, char const *argv[])
     close(principal);
     unlink(pidR);
     unlink(pidW);
-    write(1, done, strlen(done));
 
     return 0;
 

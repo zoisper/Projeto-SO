@@ -78,12 +78,13 @@ typedef struct Task{
 
 
 
-filter makeFilter(char s1[]){
+filter makeFilter(char s[], char const *path){
     filter r = malloc(sizeof(struct Filter));
     char * token;
-    token = strtok(s1, " ");
+    token = strtok(s, " ");
     strcpy(r->type, token);
-    strcpy(r->name, "../bin/aurrasd-filters/");
+    strcpy(r->name, path);
+    strcat(r->name, "/");
     token = strtok(NULL, " ");
     strcat(r->name, token);
     token = strtok(NULL, " ");
@@ -94,12 +95,29 @@ filter makeFilter(char s1[]){
 }
 
 
-filter addFilter(filter f, char s[]){
+filter addFilter(filter f, char s[], char const *path){
 
-    filter r = makeFilter(s);
+    filter r = makeFilter(s, path);
     r->prox = f;
     return r;
 }
+
+
+filter configServer(char const *path[]){
+    char buffer[BUFFSIZE];
+    filter r = NULL;
+    int config_file = open(path[1], O_RDONLY);
+    numFilters = 0;
+    while(readln(config_file, buffer)){
+       r = addFilter(r, buffer, path[2]);
+       numFilters++;
+    }
+    close(config_file);
+   return r;
+}
+
+
+
 
 filter getFilter(filter f, char type[]){
     while(f && strcmp(f->type, type)!=0)
@@ -125,25 +143,6 @@ void decreaseFilter(filter f, char type[]){
     f->ocupation--;
 }
 
-int isAvailable(filter f, char type[]){
-    while(f && strcmp(f->type, type)!=0)
-        f = f->prox;
-    return f->ocupation < f->max;
-}
-
-
-
-filter configServer(char const *path){
-    char buffer[BUFFSIZE];
-    filter r = NULL;
-    int config_file = open(path, O_RDONLY);
-    numFilters = 0;
-    while(readln(config_file, buffer)){
-       r = addFilter(r, buffer);
-       numFilters++;
-    }
-   return r;
-}
 
 
 
@@ -153,7 +152,7 @@ void createFiltersStatusFile(){
 }
 
 void createTasksFile(){
-    int fd = open(tasksPath, O_RDWR | O_TRUNC | O_CREAT, 0777);
+    int fd = open(tasksPath, O_RDWR | O_TRUNC, 0777);
     close(fd);
 
 }
@@ -220,7 +219,7 @@ void writeStatus(int file, filter f){
     lseek(tasks, 0, SEEK_SET);
     while(read(tasks, &aux, sizeof(struct Task))>0){
         if(aux.status == 0){
-            bytesRead += sprintf(buffer,"Task %d %s\n", aux.num, aux.process);
+            bytesRead += sprintf(buffer,"task #%d transform %s\n", aux.num, aux.process);
             strcat(result, buffer);
         }
     }
@@ -239,6 +238,14 @@ void writeStatus(int file, filter f){
     write(file, result, bytesRead);
 }
 
+
+int isAvailable(filter f, char type[]){
+    while(f && strcmp(f->type, type)!=0)
+        f = f->prox;
+    return f->ocupation < f->max;
+}
+
+
 int isAllAvailable(filter f, char *comandos[BUFFSIZE], int numComandos ){
     int controlo = 1;
     for(int i=2; i<numComandos && controlo; i++)
@@ -247,6 +254,7 @@ int isAllAvailable(filter f, char *comandos[BUFFSIZE], int numComandos ){
 
     return controlo;
 }
+
 
 void increaseAllFilters(filter f, char *comandos[BUFFSIZE], int numComandos){
     for(int i = 2; i<numComandos; i++)
@@ -281,6 +289,22 @@ void apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
 
 }
 
+int checkInput(filter configs, char *comandos[BUFFSIZE], int numComandos){
+    int acc, i, controlo = 1;;
+    
+    while(configs && controlo)
+    {
+        for(i=2, acc=0 ; i<numComandos; i++)
+            if(strcmp(configs->type, comandos[i])==0)
+                acc++;
+
+        if(configs->max < acc)
+            controlo = 0;
+        configs = configs->prox;
+    }
+    return controlo;
+}
+
 
 
 
@@ -295,24 +319,26 @@ int main(int argc, char const *argv[])
     int fildes[2];
     char pending[] = "pending\n";
     char processing[] = "processing\n";
+    char numFiltersExceeded[] = "exceeded number of filters allowed\n";
+    char fifo[20] = "../tmp/fifo";
     
-    
+    if(argc < 2)
+        return 0;
     
 
     createTasksFile();
     createFiltersStatusFile();
-    filter configs = configServer(argv[1]);
+    filter configs = configServer(argv);
     saveStatus(configs);
     
 
 
-    if(argc < 2)
-        return 0;
+    
 
 
 
-    mkfifo("principal", 0644);
-    int principal = open("principal", O_RDWR);
+    mkfifo(fifo, 0644);
+    int principal = open(fifo, O_RDWR);
 
        
     
@@ -330,29 +356,39 @@ int main(int argc, char const *argv[])
                 if(strcmp(buffer, "status") == 0)
                     writeStatus(fifo_W, configs);
                 else{
-                        loadStatus(configs);
+                        char newTask[BUFFSIZE] = "transform ";
+                        strcpy(newTask, buffer);
                         int numComandos = getComandos(buffer, comandos);
-                        if(! isAllAvailable(configs, comandos, numComandos)){
-                            
-                            write(fifo_W, pending, strlen(pending));
-                            
-                            while(! isAllAvailable(configs, comandos, numComandos)){
-                                loadStatus(configs);
-                        }
                         
+                        if (checkInput(configs, comandos, numComandos) == 0)
+                            write(fifo_W,numFiltersExceeded, strlen(numFiltersExceeded));
+                        
+                        else
+                        {
+                            
+                            loadStatus(configs);
+                            if(! isAllAvailable(configs, comandos, numComandos))
+                            {
+                                write(fifo_W, pending, strlen(pending));
+                                while(! isAllAvailable(configs, comandos, numComandos))
+                                    loadStatus(configs);
+                            }
+                        
+
+                        
+                            write(fifo_W, processing, strlen(processing));
+                            increaseAllFilters(configs,comandos, numComandos);
+                            saveStatus(configs);
+                            int numTask = addTask(newTask);
+                            apllyFilters(configs, comandos, numComandos);
+                            sleep((numComandos-2)*5);
+                            loadStatus(configs);
+                            decreaseAllFilters(configs, comandos, numComandos);
+                            doneTask(numTask);
+                            saveStatus(configs); 
+                        }    
 
                     }
-                        write(fifo_W, processing, strlen(processing));
-                        increaseAllFilters(configs,comandos, numComandos);
-                        saveStatus(configs);
-                        apllyFilters(configs, comandos, numComandos);
-                        loadStatus(configs);
-                        sleep(10);
-                        decreaseAllFilters(configs, comandos, numComandos);
-                        saveStatus(configs);
-                        
-
-                }
                 
                 close(fifo_W);
                 close(fifo_R);
