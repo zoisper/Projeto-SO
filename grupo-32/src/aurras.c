@@ -51,14 +51,13 @@ int main(int argc, char const *argv[])
     char pidR[20];
     char pidW[20];
     char buffer[BUFFSIZE];
-    char fifo[] = "../tmp/fifo";
+    char fifo[] = "tmp/fifo";
     
     
     int pid = getpid();
-    sprintf(pidR,"../tmp/%dR",pid);
-    sprintf(pidW,"../tmp/%dW",pid);
+    sprintf(pidR,"tmp/%dR",pid);
+    sprintf(pidW,"tmp/%dW",pid);
 
-    
 
     
     mkfifo(pidR,0777);

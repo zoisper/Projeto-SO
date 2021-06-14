@@ -19,8 +19,14 @@ obj/aurras.o: src/aurras.c
 clean:
 	rm obj/* bin/aurras bin/aurrasd tmp/*
 
-test:
-	bin/aurras transform ../samples/sample-2-miei.m4a ../tmp/sample-2.mp3 alto
-	bin/aurras status 
+testClient:
+	bin/aurras status
+	bin/aurras transform samples/sample-1-so.m4a music1.mp3 alto lento
+	bin/aurras transform samples/sample-2-miei.m4a music2.mp3 baixo
+	bin/aurras transform samples/sample-3-lcc.m4a music3.mp3 rapido eco
+
+testServer:
+	bin/aurrasd etc/aurrasd.conf bin/aurrasd-filters
+	
 	
 	

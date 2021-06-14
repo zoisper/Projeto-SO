@@ -8,10 +8,10 @@
 #define BUFFSIZE 1024
 
 int numFilters = 0;
-char tasksPath[100] = "../tmp/tasks.txt";
-char statusPath[100] = "../tmp/status.txt";
+char tasksPath[100] = "tmp/tasks.txt";
+char statusPath[100] = "tmp/status.txt";
 int principal;
-char fifo[] = "../tmp/fifo";
+char fifo[] = "tmp/fifo";
 
 typedef struct Filter{
     char type[10];
@@ -377,8 +377,8 @@ int main(int argc, char const *argv[])
         if(fork() == 0 )
         {
         
-            sprintf(pidR,"../tmp/%dR",pid);
-            sprintf(pidW,"../tmp/%dW",pid);
+            sprintf(pidR,"tmp/%dR",pid);
+            sprintf(pidW,"tmp/%dW",pid);
             int fifo_R = open(pidW, O_RDONLY);
             int fifo_W = open(pidR, O_WRONLY);
 
