@@ -289,6 +289,7 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
         close(out);
         return 1;
     }
+    return 1;
 }
 
 int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
@@ -349,7 +350,7 @@ int main(int argc, char const *argv[])
         wait(NULL);
     
     
-    if(argc < 2)
+    if(argc < 3)
         return 0;
     
 

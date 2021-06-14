@@ -15,7 +15,7 @@ void showStatus(int r, int w){
 }
 
 void showError(){
-    char error[] = "Comando Invalido\n";
+    char error[] = "invalid request \n";
     write(1, error, strlen(error));
 
 }
@@ -78,8 +78,10 @@ int main(int argc, char const *argv[])
     int fifo_R = open(pidR, O_RDONLY);
     
     if(argc==2){
-        if(strcmp(argv[1], "status") == 0 )
+        if(strcmp(argv[1], "status") == 0 ){
             showStatus(fifo_R, fifo_W);
+
+        }
         else
             showError();
         
@@ -98,11 +100,21 @@ int main(int argc, char const *argv[])
     
     if(strcmp(argv[1], "transform")!=0 || argc<5){
         showError();
+        close(fifo_R);
+        close(fifo_W);
+        unlink(pidR);
+        unlink(pidW);
+        close(principal);
         return 0;
     }
 
     if(checkFilters(argc, argv) == 0){
         showError();
+        close(fifo_R);
+        close(fifo_W);
+        unlink(pidR);
+        unlink(pidW);
+        close(principal);
         return 0;
     }
 
