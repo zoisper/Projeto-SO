@@ -35,7 +35,7 @@ int checkFilters(int argc, char const *argv[]){
     for(int i=4; i<argc && controlo; i++)
         if(strcmp(argv[i], "alto")!=0 && strcmp(argv[i], "baixo")!=0 && strcmp(argv[i], "eco")!=0 && strcmp(argv[i], "rapido")!=0 && strcmp(argv[i], "lento")!=0)
             controlo = 0;
-        return controlo;
+    return controlo;
 
 }
 
@@ -51,7 +51,7 @@ int main(int argc, char const *argv[])
     char pidR[20];
     char pidW[20];
     char buffer[BUFFSIZE];
-    char fifo[20] = "../tmp/fifo";
+    char fifo[] = "../tmp/fifo";
     
     
     int pid = getpid();
@@ -61,8 +61,8 @@ int main(int argc, char const *argv[])
     
 
     
-    mkfifo(pidR,0644);
-    mkfifo(pidW,0644);
+    mkfifo(pidR,0777);
+    mkfifo(pidW,0777);
 
     
 
@@ -82,6 +82,15 @@ int main(int argc, char const *argv[])
             showStatus(fifo_R, fifo_W);
         else
             showError();
+        
+        close(fifo_R);
+        close(fifo_W);
+        unlink(pidR);
+        unlink(pidW);
+        close(principal);
+        
+
+
         return 0;
     }
 
@@ -98,7 +107,6 @@ int main(int argc, char const *argv[])
     }
 
     joinMesasge(argv, argc, buffer);
-    int r = strlen(buffer);
     
 
     write(fifo_W, buffer, strlen(buffer));
@@ -111,9 +119,9 @@ int main(int argc, char const *argv[])
 
     close(fifo_R);
     close(fifo_W);
-    close(principal);
     unlink(pidR);
     unlink(pidW);
+    close(principal);
 
     return 0;
 
