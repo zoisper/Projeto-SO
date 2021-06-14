@@ -296,19 +296,16 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
 
 
 int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
-    int controlo = 1, acc = 0;
+    int controlo = 1;
     for(int i=2; i<numComandos && controlo; i++){
         if(i==2)
             controlo = apllyFilter(configs, comandos[i], comandos[0], comandos[1]);
-        else{
+        else
+            controlo = apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
+        if(controlo)
             wait(NULL);
-            apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
-        }
-        acc += controlo;
+        
     }
-
-    for(int i=0; i<acc; i++)
-        wait(NULL);
 
     return controlo;
 
