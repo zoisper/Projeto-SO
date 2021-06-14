@@ -275,7 +275,7 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     int in = open(inFile, O_RDONLY, 0777);
     if(in <0)
         return 0;
-    int out = open(outFile, O_CREAT | O_TRUNC | O_WRONLY, 0777);
+    int out = open(outFile, O_WRONLY | O_CREAT  , 0777);
     filter f = getFilter(configs, type);
     
     if (fork() == 0){
@@ -292,13 +292,18 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     return 1;
 }
 
+
+
+
 int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
     int controlo = 1, acc = 0;
     for(int i=2; i<numComandos && controlo; i++){
         if(i==2)
             controlo = apllyFilter(configs, comandos[i], comandos[0], comandos[1]);
-        else
-            controlo = apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
+        else{
+            wait(NULL);
+            apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
+        }
         acc += controlo;
     }
 
