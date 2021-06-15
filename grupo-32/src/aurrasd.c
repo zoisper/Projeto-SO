@@ -9,7 +9,7 @@
 
 int numFilters = 0;
 char tasksPath[100] = "tmp/tasks.txt";
-char statusPath[100] = "tmp/status.txt";
+char filtersOcupationPath[100] = "tmp/filtersOcupation.txt";
 int principal;
 char fifo[] = "tmp/fifo";
 
@@ -28,50 +28,39 @@ typedef struct Task{
     char process[100];
 } task;
 
-ssize_t readln(int fd, char *line)
+
+int readline(int src, char *dest)
 {
 
-    ssize_t res = 0;
-    ssize_t j = 0;
-    char local[BUFFSIZE];
+    int bytesRead = 0;
+    char local[1] = "";
 
-    while((res = read(fd, local, 1))>0)
-    {
-        for(int i=0; i<res; i++)
-        {
-            if(local[i] != '\n')
-            {
-                line[j] = local[i];
-                j++;
-            }
-            else{
-                line[j] = '\0';
-                return j;
-            }
-        }
-    }
-    return j;
+    while(read(src, local, 1) > 0 && local[0] != '\n')
+        dest[bytesRead++] = local[0];
+    
+    dest[bytesRead] = '\0';
+    return bytesRead;
     
 }
 
 
-int getComandos(char args[], char *result[BUFFSIZE])
+int splitLine(char src[], char *dest[BUFFSIZE])
 {
 
     char *token;
-    int numComandos = 0;
+    int destSize = 0;
 
 
-    token = strtok(args, " ");
+    token = strtok(src, " ");
     while(token != NULL)
     {
         
-        result[numComandos] = token;
+        dest[destSize] = token;
         token = strtok(NULL, " ");
-        numComandos++;
+        destSize++;
     }
 
-    return numComandos;
+    return destSize;
 
 }
 
@@ -111,7 +100,7 @@ filter configServer(char const *path[]){
     filter r = NULL;
     int config_file = open(path[1], O_RDONLY);
     numFilters = 0;
-    while(readln(config_file, buffer)){
+    while(readline(config_file, buffer)){
        r = addFilter(r, buffer, path[2]);
        numFilters++;
     }
@@ -122,35 +111,38 @@ filter configServer(char const *path[]){
 
 
 
-filter getFilter(filter f, char type[]){
-    while(f && strcmp(f->type, type)!=0)
-        f = f->prox;
-    return f;
+
+void increaseFiltersOcupation(filter f, char *requests[BUFFSIZE], int numRequests){
+    while(f)
+    {
+        for(int i=2, controlo=1; i<numRequests && controlo; i++)
+            if(strcmp(f->type, requests[i]) == 0)
+            {
+                f->ocupation++;
+                controlo = 0;
+            }
+        f=f->prox;
+    }
 }
 
-void updateFilter(filter f, char type[], int value){
-    while(f && strcmp(f->type, type)!=0)
-        f = f->prox;
-    f->ocupation = value;
-}
-
-void increaseFilter(filter f, char type[]){
-    while(f && strcmp(f->type, type)!=0)
-        f = f->prox;
-    f->ocupation++;
-}
-
-void decreaseFilter(filter f, char type[]){
-    while(f && strcmp(f->type, type)!=0)
-        f = f->prox;
-    f->ocupation--;
+void decreaseFiltersOcupation(filter f, char *requests[BUFFSIZE], int numRequests){
+    while(f)
+    {
+        for(int i=2, controlo=1; i<numRequests && controlo; i++)
+            if(strcmp(f->type, requests[i]) == 0)
+            {
+                f->ocupation--;
+                controlo = 0;
+            }
+        f=f->prox;
+    }
 }
 
 
 
 
-void createFiltersStatusFile(){
-    int fd = open(statusPath,O_RDWR | O_TRUNC |O_CREAT, 0600);
+void createFiltersOcupationFile(){
+    int fd = open(filtersOcupationPath,O_RDWR | O_TRUNC |O_CREAT, 0600);
     close(fd);
 }
 
@@ -162,8 +154,10 @@ void createTasksFile(){
 
 }
 
-void saveStatus(filter f){
-    int fd = open(statusPath, O_RDWR);
+
+
+void saveFiltersOcupation(filter f){
+    int fd = open(filtersOcupationPath, O_RDWR);
     int ocupation[numFilters];
     for(int i = 0; i< numFilters && f; i++){
         ocupation[i] = f->ocupation;
@@ -174,8 +168,8 @@ void saveStatus(filter f){
     close(fd);
 }
 
-void loadStatus(filter f){
-    int fd = open(statusPath, O_RDWR);
+void loadFiltersOcupation(filter f){
+    int fd = open(filtersOcupationPath, O_RDWR);
     int ocupation[numFilters];
     lseek(fd, 0, SEEK_SET);
     read(fd, ocupation, sizeof(int)*numFilters);
@@ -185,6 +179,7 @@ void loadStatus(filter f){
     }
     close(fd);
 }
+
 
 int addTask(char process[]){
     int tasks = open(tasksPath,O_RDWR);
@@ -202,7 +197,7 @@ int addTask(char process[]){
     return new.num;
 }
 
-void doneTask(int taskNumber){
+void deleteTask(int taskNumber){
     int tasks = open(tasksPath,O_RDWR);
     task aux;
     lseek(tasks, 0, SEEK_SET);
@@ -213,6 +208,8 @@ void doneTask(int taskNumber){
     close(tasks);
 
 }
+
+
 
 
 void writeStatus(int file, filter f){
@@ -229,7 +226,7 @@ void writeStatus(int file, filter f){
         }
     }
     close(tasks);
-    loadStatus(f);
+    loadFiltersOcupation(f);
     while(f){
         bytesRead += sprintf(buffer,"filter %s: %d/%d (running/max)\n", f->type, f->ocupation, f->max);
         strcat(result, buffer);
@@ -245,37 +242,42 @@ void writeStatus(int file, filter f){
 
 
 
-
-int isAllAvailable(filter f, char *comandos[BUFFSIZE], int numComandos ){
-    int i, controlo = 1, acc;
-    while(f && controlo)
+int isAllFiltersAvailable(filter f, char *requests[BUFFSIZE], int numRequests ){
+    int i, result = 1, controlo = 1;
+    while(f && result)
     {
-        for(i=2, acc=0; i<numComandos && controlo; i++)
-            if(strcmp(comandos[i],f->type)==0)
-                acc++;
-        if(f->max < f->ocupation + acc)
-            controlo = 0;
+        for(i=2, controlo=1; i<numRequests && controlo; i++)
+            if(strcmp(requests[i],f->type) == 0) 
+            {
+                if( f->max <= f->ocupation )
+                {
+                    controlo = 0;
+                    result = 0;
+                }   
+                else
+                    controlo = 0;
+            }
         f = f->prox;
     }
-    return controlo;
+    return result;
 }
 
 
-void increaseAllFilters(filter f, char *comandos[BUFFSIZE], int numComandos){
-    for(int i = 2; i<numComandos; i++)
-        increaseFilter(f, comandos[i]);
+
+filter getFilter(filter f, char type[]){
+    while(f && strcmp(f->type, type)!=0)
+        f = f->prox;
+    return f;
 }
 
-void decreaseAllFilters(filter f, char *comandos[BUFFSIZE], int numComandos){
-    for(int i = 2; i<numComandos; i++)
-        decreaseFilter(f, comandos[i]);
-}
+
 
 int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     int in = open(inFile, O_RDONLY, 0777);
-    if(in <0)
-        return 0;
     int out = open(outFile, O_WRONLY | O_CREAT  , 0777);
+    if(in  <0 || out <0)
+        return 0;
+    
     filter f = getFilter(configs, type);
     
     if (fork() == 0){
@@ -287,11 +289,10 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     else{
         close(in);
         close(out);
-        return 1;
+        wait(NULL);
     }
     return 1;
 }
-
 
 
 
@@ -302,54 +303,33 @@ int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
             controlo = apllyFilter(configs, comandos[i], comandos[0], comandos[1]);
         else
             controlo = apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
-        if(controlo)
-            wait(NULL);
         
     }
 
     return controlo;
-
-
 }
 
-int checkInput(filter configs, char *comandos[BUFFSIZE], int numComandos){
-    int acc, i, controlo = 1;;
-    
-    while(configs && controlo)
-    {
-        for(i=2, acc=0 ; i<numComandos; i++)
-            if(strcmp(configs->type, comandos[i])==0)
-                acc++;
 
-        if(configs->max < acc)
-            controlo = 0;
-        configs = configs->prox;
-    }
-    return controlo;
-}
 
 void handler(int signum){
     
     close(principal);
-
 }
+
 
 
 
 int main(int argc, char const *argv[]) 
 {
     char buffer[BUFFSIZE];
-    char * comandos[BUFFSIZE];
+    char * requests[BUFFSIZE];
     int pid;
     int bytesRead;
     char pidR[20];
     char pidW[20];
     char pending[] = "pending\n";
     char processing[] = "processing\n";
-    char numFiltersExceeded[] = "exceeded number of filters allowed\n";
-    char sourceError[] = "Source File Not Exist\n";
-    for(int i=0; i<100; i++)
-        wait(NULL);
+    char sourceError[] = "Source File Not Found\n";
     
     
     if(argc < 3)
@@ -357,15 +337,10 @@ int main(int argc, char const *argv[])
     
 
     createTasksFile();
-    createFiltersStatusFile();
+    createFiltersOcupationFile();
+    
     filter configs = configServer(argv);
-    saveStatus(configs);
-    
-
-
-    
-
-
+    saveFiltersOcupation(configs);
 
     mkfifo(fifo, 0777);
     principal = open(fifo, O_RDWR);
@@ -391,36 +366,29 @@ int main(int argc, char const *argv[])
                 else{
                         char newTask[BUFFSIZE] = "transform ";
                         strcpy(newTask, buffer);
-                        int numComandos = getComandos(buffer, comandos);
+                        int numRequests = splitLine(buffer, requests);
                         
-                        if (checkInput(configs, comandos, numComandos) == 0)
-                            write(fifo_W,numFiltersExceeded, strlen(numFiltersExceeded));
-                        
-                        else
-                        {
-                            
-                            loadStatus(configs);
-                            if(! isAllAvailable(configs, comandos, numComandos))
+                            loadFiltersOcupation(configs);
+                            if(!isAllFiltersAvailable(configs, requests, numRequests))
                             {
                                 write(fifo_W, pending, strlen(pending));
-                                while(! isAllAvailable(configs, comandos, numComandos))
-                                    loadStatus(configs);
+                                while(!isAllFiltersAvailable(configs, requests, numRequests))
+                                    loadFiltersOcupation(configs);
                             }
                         
-
                         
+                            increaseFiltersOcupation(configs, requests, numRequests);
+                            saveFiltersOcupation(configs);
                             write(fifo_W, processing, strlen(processing));
-                            increaseAllFilters(configs,comandos, numComandos);
-                            saveStatus(configs);
                             int numTask = addTask(newTask);
-                            if (apllyFilters(configs, comandos, numComandos) == 0 )
+                            if (apllyFilters(configs, requests, numRequests) == 0 )
                                 write(fifo_W, sourceError, strlen(sourceError));
-                            //sleep((numComandos-2)*5);
-                            loadStatus(configs);
-                            decreaseAllFilters(configs, comandos, numComandos);
-                            doneTask(numTask);
-                            saveStatus(configs); 
-                        }    
+
+                            loadFiltersOcupation(configs);
+                            decreaseFiltersOcupation(configs, requests, numRequests);
+                            deleteTask(numTask);
+                            saveFiltersOcupation(configs); 
+               
 
                     }
                 
@@ -436,7 +404,7 @@ int main(int argc, char const *argv[])
 
     unlink(fifo);
     unlink(tasksPath);
-    unlink(statusPath);
+    unlink(filtersOcupationPath);
 
     
 

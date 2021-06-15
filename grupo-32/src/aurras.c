@@ -20,17 +20,17 @@ void showError(){
 
 }
 
-void joinMesasge(char const *comands[], int numComands, char result []){
-    result[0] = '\0';
-    for(int i=2; i<numComands; i++){
-        strcat(result, comands[i]);
-        if(i != numComands-1)
-            strcat(result, " ");
+void joinMesasge(char const *src[], int srcSize, char dest []){
+    dest[0] = '\0';
+    for(int i=2; i<srcSize; i++){
+        strcat(dest, src[i]);
+        if(i != srcSize-1)
+            strcat(dest, " ");
 
     }
 }
 
-int checkFilters(int argc, char const *argv[]){
+int checkRequest(int argc, char const *argv[]){
     int controlo = 1;
     for(int i=4; i<argc && controlo; i++)
         if(strcmp(argv[i], "alto")!=0 && strcmp(argv[i], "baixo")!=0 && strcmp(argv[i], "eco")!=0 && strcmp(argv[i], "rapido")!=0 && strcmp(argv[i], "lento")!=0)
@@ -76,11 +76,12 @@ int main(int argc, char const *argv[])
     int fifo_W = open(pidW, O_WRONLY);
     int fifo_R = open(pidR, O_RDONLY);
     
-    if(argc==2){
-        if(strcmp(argv[1], "status") == 0 ){
+    if(argc == 2)
+    {
+        if(strcmp(argv[1], "status") == 0 )
             showStatus(fifo_R, fifo_W);
 
-        }
+    
         else
             showError();
         
@@ -89,15 +90,12 @@ int main(int argc, char const *argv[])
         unlink(pidR);
         unlink(pidW);
         close(principal);
-        
-
-
         return 0;
     }
 
     
     
-    if(strcmp(argv[1], "transform")!=0 || argc<5){
+    if( argc < 5 || strcmp(argv[1], "transform")!=0 || checkRequest(argc, argv) == 0 ){
         showError();
         close(fifo_R);
         close(fifo_W);
@@ -107,15 +105,7 @@ int main(int argc, char const *argv[])
         return 0;
     }
 
-    if(checkFilters(argc, argv) == 0){
-        showError();
-        close(fifo_R);
-        close(fifo_W);
-        unlink(pidR);
-        unlink(pidW);
-        close(principal);
-        return 0;
-    }
+
 
     joinMesasge(argv, argc, buffer);
     
