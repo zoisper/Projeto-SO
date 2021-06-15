@@ -44,7 +44,7 @@ int readline(int src, char *dest)
 }
 
 
-int splitLine(char src[], char *dest[BUFFSIZE])
+int splitLine(char src[], char *dest[])
 {
 
     char *token;
@@ -112,28 +112,22 @@ filter configServer(char const *path[]){
 
 
 
-void increaseFiltersOcupation(filter f, char *requests[BUFFSIZE], int numRequests){
+void increaseFiltersOcupation(filter f, char *requests[], int numRequests){
     while(f)
     {
-        for(int i=2, controlo=1; i<numRequests && controlo; i++)
+        for(int i=2; i<numRequests; i++)
             if(strcmp(f->type, requests[i]) == 0)
-            {
                 f->ocupation++;
-                controlo = 0;
-            }
         f=f->prox;
     }
 }
 
-void decreaseFiltersOcupation(filter f, char *requests[BUFFSIZE], int numRequests){
+void decreaseFiltersOcupation(filter f, char *requests[], int numRequests){
     while(f)
     {
-        for(int i=2, controlo=1; i<numRequests && controlo; i++)
+        for(int i=2; i<numRequests; i++)
             if(strcmp(f->type, requests[i]) == 0)
-            {
                 f->ocupation--;
-                controlo = 0;
-            }
         f=f->prox;
     }
 }
@@ -242,21 +236,15 @@ void writeStatus(int file, filter f){
 
 
 
-int isAllFiltersAvailable(filter f, char *requests[BUFFSIZE], int numRequests ){
-    int i, result = 1, controlo = 1;
+int isAllFiltersAvailable(filter f, char *requests[], int numRequests ){
+    int i, acc, result = 1;
     while(f && result)
     {
-        for(i=2, controlo=1; i<numRequests && controlo; i++)
-            if(strcmp(requests[i],f->type) == 0) 
-            {
-                if( f->max <= f->ocupation )
-                {
-                    controlo = 0;
-                    result = 0;
-                }   
-                else
-                    controlo = 0;
-            }
+        for(i=2, acc=0; i<numRequests && result; i++)
+            if(strcmp(requests[i],f->type)==0)
+                acc++;
+        if(f->max < f->ocupation + acc)
+            result = 0;
         f = f->prox;
     }
     return result;
@@ -275,7 +263,7 @@ filter getFilter(filter f, char type[]){
 int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     int in = open(inFile, O_RDONLY, 0777);
     int out = open(outFile, O_WRONLY | O_CREAT  , 0777);
-    if(in  <0 || out <0)
+    if(in  < 0 || out < 0)
         return 0;
     
     filter f = getFilter(configs, type);
@@ -296,7 +284,7 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
 
 
 
-int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
+int apllyFilters(filter configs, char *comandos[], int numComandos){
     int controlo = 1;
     for(int i=2; i<numComandos && controlo; i++){
         if(i==2)
@@ -306,6 +294,22 @@ int apllyFilters(filter configs, char *comandos[BUFFSIZE], int numComandos){
         
     }
 
+    return controlo;
+}
+
+int checkInput(filter configs, char *requests[], int numRequests){
+    int acc, i, controlo = 1;;
+    
+    while(configs && controlo)
+    {
+        for(i=2, acc=0 ; i<numRequests; i++)
+            if(strcmp(configs->type, requests[i])==0)
+                acc++;
+
+        if(configs->max < acc)
+            controlo = 0;
+        configs = configs->prox;
+    }
     return controlo;
 }
 
@@ -329,6 +333,7 @@ int main(int argc, char const *argv[])
     char pidW[20];
     char pending[] = "pending\n";
     char processing[] = "processing\n";
+    char numFiltersExceeded[] = "exceeded number of filters allowed\n";
     char sourceError[] = "Source File Not Found\n";
     
     
@@ -368,6 +373,12 @@ int main(int argc, char const *argv[])
                         strcpy(newTask, buffer);
                         int numRequests = splitLine(buffer, requests);
                         
+                        if (checkInput(configs, requests, numRequests) == 0)
+                            write(fifo_W,numFiltersExceeded, strlen(numFiltersExceeded));
+                        else
+                        {
+
+
                             loadFiltersOcupation(configs);
                             if(!isAllFiltersAvailable(configs, requests, numRequests))
                             {
@@ -388,6 +399,7 @@ int main(int argc, char const *argv[])
                             decreaseFiltersOcupation(configs, requests, numRequests);
                             deleteTask(numTask);
                             saveFiltersOcupation(configs); 
+                        }
                
 
                     }
