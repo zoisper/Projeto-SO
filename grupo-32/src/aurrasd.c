@@ -260,7 +260,7 @@ filter getFilter(filter f, char type[]){
 
 
 
-int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
+/*int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
     int in = open(inFile, O_RDONLY, 0777);
     int out = open(outFile, O_WRONLY | O_CREAT  , 0777);
     if(in  < 0 || out < 0)
@@ -284,18 +284,108 @@ int apllyFilter(filter configs, char type[], char inFile[], char outFile[]){
 
 
 
-int apllyFilters(filter configs, char *comandos[], int numComandos){
+int apllyFilters(filter configs, char *requests[], int numRequests){
     int controlo = 1;
-    for(int i=2; i<numComandos && controlo; i++){
+    for(int i=2; i<numRequests && controlo; i++){
         if(i==2)
-            controlo = apllyFilter(configs, comandos[i], comandos[0], comandos[1]);
+            controlo = apllyFilter(configs, requests[i], requests[0], requests[1]);
         else
-            controlo = apllyFilter(configs, comandos[i], comandos[1], comandos[1]);
+            controlo = apllyFilter(configs, requests[i], requests[1], requests[1]);
         
     }
 
     return controlo;
+}*/
+
+void closePipes(int fildes[][2], int n )
+{
+    int i;
+    for (i=0; i <n; i++)
+    {
+        close(fildes[i][0]);
+        close(fildes[i][1]);
+    }
+
 }
+
+void makePipes(int fildes[][2], int n){
+    for(int i=0; i<n; i++)
+        pipe(fildes[i]);
+}
+
+
+int apllyFilters(filter configs, char *requests[], int numRequests){
+    int in = open( requests[0],O_RDONLY, 0777);
+    int out = open(requests[1], O_RDWR | O_CREAT ,0777);
+    if(in  < 0 || out < 0)
+        return 0;
+    
+    int fildes[numRequests-2][2];
+
+
+    if (fork() == 0)
+    {
+        if(numRequests == 3)
+        {
+            filter f = getFilter(configs,requests[2]);
+            dup2(in,0);
+            dup2(out,1);
+            execl(f->name, f->name, NULL);
+        }
+
+        makePipes(fildes, numRequests-2);
+
+        for(int i=2; i<numRequests; i++)
+        {
+            filter f = getFilter(configs, requests[i]);
+            if(fork() == 0)
+            {
+                if(i == numRequests-1)
+                {
+                    dup2(in,0);
+                    dup2(fildes[i-3][1],1);
+                    closePipes(fildes,numRequests-2);
+                    execl(f->name, f->name, NULL);
+                    
+                }
+            }
+            else
+                if(i == 2)
+                {
+                    dup2(out,1);
+                    dup2(fildes[i-2][0],0);
+                    closePipes(fildes,numRequests-2);
+                    execl(f->name, f->name, NULL);
+                    
+                }
+                else
+                    if(i != numRequests-1)
+                    {
+                        dup2(fildes[i-2][0],0);
+                        dup2(fildes[i-3][1],1);
+                        closePipes(fildes,numRequests-2);
+                        execl(f->name, f->name, NULL);
+                    }
+                else{
+                    closePipes(fildes, numRequests-1);
+                    _exit(0);
+                }
+    }    }
+    else
+    {
+        wait(NULL);
+        close(in);
+        close(out);
+    }
+
+    
+        
+        
+    return 1;
+    
+}
+
+
 
 int checkInput(filter configs, char *requests[], int numRequests){
     int acc, i, controlo = 1;;

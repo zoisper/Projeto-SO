@@ -23,10 +23,10 @@ status:
 	bin/aurras status
 
 transform1:
-	bin/aurras transform samples/sample-1-so.m4a music1.mp3 lento alto
+	bin/aurras transform samples/sample-1-so.m4a music1.mp3 alto 
 
 transform2:
-	bin/aurras transform samples/sample-2-miei.m4a music2.mp3 baixo rapido eco 
+	bin/aurras transform samples/sample-2-miei.m4a music2.mp3 eco rapido  
 
 transform3:
 	bin/aurras transform samples/sample-3-lcc.m4a music3.mp3 rapido rapido rapido  
