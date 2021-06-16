@@ -13,6 +13,7 @@ char filtersOcupationPath[100] = "tmp/filtersOcupation.txt";
 int principal;
 char fifo[] = "tmp/fifo";
 
+
 typedef struct Filter{
     char type[10];
     char name[100];
@@ -95,17 +96,22 @@ filter addFilter(filter f, char s[], char const *path){
 }
 
 
-filter configServer(char const *path[]){
+int configServer(char const *path[], filter *f){
     char buffer[BUFFSIZE];
     filter r = NULL;
     int config_file = open(path[1], O_RDONLY);
+    
+    if(config_file <0)
+        return 0;
     numFilters = 0;
+    
     while(readline(config_file, buffer)){
        r = addFilter(r, buffer, path[2]);
        numFilters++;
     }
     close(config_file);
-   return r;
+   *f = r;
+   return 1;
 }
 
 
@@ -332,45 +338,55 @@ int apllyFilters(filter configs, char *requests[], int numRequests){
             dup2(out,1);
             execl(f->name, f->name, NULL);
         }
-
-        makePipes(fildes, numRequests-2);
-
-        for(int i=2; i<numRequests; i++)
+        else
         {
-            filter f = getFilter(configs, requests[i]);
-            if(fork() == 0)
+
+
+            makePipes(fildes, numRequests-2);
+
+            for(int i=2; i<numRequests; i++)
             {
-                if(i == numRequests-1)
+                filter f = getFilter(configs, requests[i]);
+                if(fork() == 0)
                 {
-                    dup2(in,0);
-                    dup2(fildes[i-3][1],1);
-                    closePipes(fildes,numRequests-2);
-                    execl(f->name, f->name, NULL);
-                    
-                }
-            }
-            else
-                if(i == 2)
-                {
-                    dup2(out,1);
-                    dup2(fildes[i-2][0],0);
-                    closePipes(fildes,numRequests-2);
-                    execl(f->name, f->name, NULL);
-                    
-                }
-                else
-                    if(i != numRequests-1)
+                    if(i == numRequests-1)
                     {
-                        dup2(fildes[i-2][0],0);
+                        dup2(in,0);
                         dup2(fildes[i-3][1],1);
                         closePipes(fildes,numRequests-2);
                         execl(f->name, f->name, NULL);
+                    
                     }
-                else{
-                    closePipes(fildes, numRequests-1);
-                    _exit(0);
                 }
-    }    }
+                else
+                    if(i == 2)
+                    {
+                        dup2(out,1);
+                        dup2(fildes[i-2][0],0);
+                        closePipes(fildes,numRequests-2);
+                        execl(f->name, f->name, NULL);
+                    
+                    }
+                    else
+                        if(i != numRequests-1)
+                        {
+                            dup2(fildes[i-2][0],0);
+                            dup2(fildes[i-3][1],1);
+                            closePipes(fildes,numRequests-2);
+                            execl(f->name, f->name, NULL);
+                        }
+                    
+                    else
+                    {
+                        closePipes(fildes, numRequests-1);
+                        _exit(0);
+                    }
+            }    
+        }
+    
+    }
+    
+
     else
     {
         wait(NULL);
@@ -425,16 +441,28 @@ int main(int argc, char const *argv[])
     char processing[] = "processing\n";
     char numFiltersExceeded[] = "exceeded number of filters allowed\n";
     char sourceError[] = "Source File Not Found\n";
+    char argumentsError[] = "invalid number of arguments\n";
+    char configServerError[] = "filters not found\n";
+
     
     
-    if(argc < 3)
+    if(argc < 3){
+        write(1, argumentsError, strlen(argumentsError));
         return 0;
+    }
     
 
+    filter configs = NULL; 
+    
+    if (!configServer(argv, &configs)){
+        write(1, configServerError, strlen(configServerError));
+        return 0;
+    }
+
+    
     createTasksFile();
     createFiltersOcupationFile();
     
-    filter configs = configServer(argv);
     saveFiltersOcupation(configs);
 
     mkfifo(fifo, 0777);

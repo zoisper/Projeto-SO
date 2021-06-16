@@ -26,10 +26,10 @@ transform1:
 	bin/aurras transform samples/sample-1-so.m4a music1.mp3 alto 
 
 transform2:
-	bin/aurras transform samples/sample-2-miei.m4a music2.mp3 eco rapido  
+	bin/aurras transform samples/sample-2-miei.m4a music2.mp3 alto lento  
 
 transform3:
-	bin/aurras transform samples/sample-3-lcc.m4a music3.mp3 rapido rapido rapido  
+	bin/aurras transform samples/sample-3-lcc.m4a music3.mp3 rapido eco baixo  
 
 transform4:
 	bin/aurras transform samples/Ievan-Polkka-Loituma.m4a music4.mp3 rapido rapido eco

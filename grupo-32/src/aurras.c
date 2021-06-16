@@ -15,7 +15,7 @@ void showStatus(int r, int w){
 }
 
 void showError(){
-    char error[] = "invalid request \n";
+    char error[] = "invalid request\n";
     write(1, error, strlen(error));
 
 }
