@@ -46,8 +46,6 @@ transform7:
 transform8:
 	bin/aurras transform samples/sample-2-miei.m4a music8.mp3 eco lento
 
-
-
 openServer:
 	bin/aurrasd etc/aurrasd.conf bin/aurrasd-filters
 	
