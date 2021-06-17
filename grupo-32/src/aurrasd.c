@@ -526,8 +526,10 @@ int main(int argc, char const *argv[])
                         if(!isAllFiltersAvailable(configs, requests, numRequests))
                         {
                             write(fifo_W, pending, strlen(pending));
-                            while(!isAllFiltersAvailable(configs, requests, numRequests))
+                            while(!isAllFiltersAvailable(configs, requests, numRequests)){
+                                sleep(1);
                                 loadFiltersOcupation(configs);
+                            }
                         }
                         
                         
@@ -541,8 +543,8 @@ int main(int argc, char const *argv[])
 
                         loadFiltersOcupation(configs);
                         decreaseFiltersOcupation(configs, requests, numRequests);
-                        deleteTask(numTask);
                         saveFiltersOcupation(configs); 
+                        deleteTask(numTask);
                     }
                
 

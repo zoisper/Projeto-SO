@@ -34,6 +34,20 @@ transform3:
 transform4:
 	bin/aurras transform samples/Ievan-Polkka-Loituma.m4a music4.mp3 rapido rapido eco
 
+transform5:
+	bin/aurras transform samples/Ievan-Polkka-Loituma.m4a music5.mp3 lento eco eco
+
+transform6:
+	bin/aurras transform samples/sample-1-so.m4a music6.mp3 baixo
+
+transform7:
+	bin/aurras transform samples/sample-3-lcc.m4a music7.mp3 rapido eco baixo alto rapido eco baixo alto    
+
+transform8:
+	bin/aurras transform samples/sample-2-miei.m4a music8.mp3 eco lento
+
+
+
 openServer:
 	bin/aurrasd etc/aurrasd.conf bin/aurrasd-filters
 	
