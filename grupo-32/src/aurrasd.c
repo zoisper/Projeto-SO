@@ -14,6 +14,7 @@ int principal;
 char fifo[] = "tmp/fifo";
 
 
+
 typedef struct Filter{
     char type[10];
     char name[100];
@@ -470,7 +471,6 @@ int main(int argc, char const *argv[])
 
        
     signal(SIGTERM, handler);
-    signal(SIGINT, handler);
     
     while(read(principal, &pid, sizeof(pid)) > 0){
         
@@ -533,8 +533,7 @@ int main(int argc, char const *argv[])
     }
 
     unlink(fifo);
-    unlink(tasksPath);
-    unlink(filtersOcupationPath);
+
 
     
 
