@@ -70,7 +70,9 @@ int main(int argc, char const *argv[])
 
     
 
-    int principal = open(fifo, O_WRONLY);
+    int principal;
+    while((principal = open(fifo, O_WRONLY)) <0);
+
     
     
     
