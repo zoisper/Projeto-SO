@@ -470,7 +470,8 @@ int main(int argc, char const *argv[])
 
     
     
-    if(argc < 3){
+    if(argc < 3)
+    {
         write(1, argumentsError, strlen(argumentsError));
         return 0;
     }
@@ -478,7 +479,8 @@ int main(int argc, char const *argv[])
 
     filter configs = NULL; 
     
-    if (!configServer(argv, &configs)){
+    if (!configServer(argv, &configs))
+    {
         write(1, configServerError, strlen(configServerError));
         return 0;
     }
