@@ -521,7 +521,7 @@ int main(int argc, char const *argv[])
                         write(fifo_W,numFiltersExceeded, strlen(numFiltersExceeded));
                     else
                     {
-
+                        sleep(1);
                         loadFiltersOcupation(configs);
                         if(!isAllFiltersAvailable(configs, requests, numRequests))
                         {
@@ -540,7 +540,7 @@ int main(int argc, char const *argv[])
                 
                         if (apllyFilters(configs, requests, numRequests) == 0 )
                             write(fifo_W, sourceError, strlen(sourceError));
-
+                        sleep(1);
                         loadFiltersOcupation(configs);
                         decreaseFiltersOcupation(configs, requests, numRequests);
                         saveFiltersOcupation(configs); 
