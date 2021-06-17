@@ -15,9 +15,9 @@ void showStatus(int r, int w)
 }
 
 
-void showError()
+void showError(char error[])
 {
-    char error[] = "invalid request\n";
+    
     write(1, error, strlen(error));
 }
 
@@ -57,6 +57,8 @@ int main(int argc, char const *argv[])
     char pidW[20];
     char buffer[BUFFSIZE];
     char fifo[] = "tmp/fifo";
+    char requestError[] = "invalid request\n";
+    char serverError[] = "server not available\n";
     
     
     int pid = getpid();
@@ -70,11 +72,16 @@ int main(int argc, char const *argv[])
 
     
 
-    int principal;
-    while((principal = open(fifo, O_WRONLY)) < 0);
+    int principal = open(fifo, O_WRONLY);
 
-    
-    
+    if(principal < 0){
+        showError(serverError);
+        return 0;
+    }
+
+
+
+      
     
     write(principal, &pid, sizeof(pid));
     close(principal);
@@ -90,7 +97,7 @@ int main(int argc, char const *argv[])
 
     
         else
-            showError();
+            showError(requestError);
         
         close(fifo_R);
         close(fifo_W);
@@ -104,7 +111,7 @@ int main(int argc, char const *argv[])
     
     if( argc < 5 || strcmp(argv[1], "transform")!=0 || checkRequest(argc, argv) == 0 )
     {
-        showError();
+        showError(requestError);
         close(fifo_R);
         close(fifo_W);
         unlink(pidR);
