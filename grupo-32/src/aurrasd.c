@@ -464,7 +464,7 @@ int main(int argc, char const *argv[])
     char pending[] = "pending\n";
     char processing[] = "processing\n";
     char numFiltersExceeded[] = "exceeded number of filters allowed\n";
-    char sourceError[] = "Source File Not Found\n";
+    char sourceError[] = "source file not found\n";
     char argumentsError[] = "invalid number of arguments\n";
     char configServerError[] = "filters not found\n";
 
