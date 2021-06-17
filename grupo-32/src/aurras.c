@@ -19,7 +19,7 @@ void showError(){
 
 }
 
-void joinMesasge(char const *src[], int srcSize, char dest []){
+void concat(char const *src[], int srcSize, char dest []){
     dest[0] = '\0';
     for(int i=2; i<srcSize; i++){
         strcat(dest, src[i]);
@@ -106,7 +106,7 @@ int main(int argc, char const *argv[])
 
 
 
-    joinMesasge(argv, argc, buffer);
+    concat(argv, argc, buffer);
     
 
     write(fifo_W, buffer, strlen(buffer));
