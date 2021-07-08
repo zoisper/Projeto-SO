@@ -1,2 +1,1 @@
-# Aurras-SO
-Projeto SO
+# Projeto-SO
