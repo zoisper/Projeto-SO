@@ -1,1 +1,2 @@
-# Projeto de Sistemas Operativos
+# SO-Projeto
+Projeto de Sistemas Operativos
